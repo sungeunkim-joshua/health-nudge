@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="건강 알림">
+<title>건강 알림</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, sans-serif; margin: 0; padding: 16px; }
+  label { font-size: 14px; opacity: 0.7; }
+  input { width: 100%; box-sizing: border-box; padding: 12px; font-size: 16px; border: 1px solid #8884; border-radius: 10px; margin: 6px 0 16px; background: transparent; color: inherit; }
+  button { width: 100%; padding: 18px; font-size: 18px; border: 0; border-radius: 12px; background: #34c759; color: #fff; }
+  button.secondary { background: #8e8e93; margin-top: 10px; }
+  #status { margin-top: 16px; font-size: 14px; min-height: 20px; }
+</style>
+</head>
+<body>
+<label for="topic">토픽 (상대 폰 ntfy 앱과 같은 값)</label>
+<input id="topic" placeholder="먼저 '새 토픽 만들기'를 누르세요">
+<button id="send">건강 알림 보내기</button>
+<button id="gen" class="secondary">새 토픽 만들기</button>
+<div id="status"></div>
+<script>
+const MESSAGES = [
+  ['💧 물 마실 시간', '물 한 잔 드세요'],
+  ['🫁 숨 고르기', '깊게 숨 한 번 쉬어요'],
+  ['🧍 허리 펴기', '잠깐 일어나서 허리 펴요'],
+  ['🤸 스트레칭', '목과 어깨 가볍게 풀어요'],
+];
+const $ = id => document.getElementById(id);
+const show = msg => { $('status').textContent = msg; };
+
+function loadTopic() {
+  try { return localStorage.getItem('topic') || ''; } catch { return ''; }
+}
+function saveTopic(v) {
+  try { localStorage.setItem('topic', v); } catch {}
+}
+
+$('topic').value = loadTopic();
+$('topic').onchange = e => saveTopic(e.target.value.trim());
+
+$('gen').onclick = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const topic = 'hn-' + Array.from(bytes, b => b.toString(36)).join('').slice(0, 20);
+  $('topic').value = topic;
+  saveTopic(topic);
+  show('새 토픽 생성. 상대 폰 ntfy 앱에서 이 토픽 구독');
+};
+
+$('send').onclick = async () => {
+  const topic = $('topic').value.trim();
+  if (!topic) return show('토픽을 먼저 입력하세요');
+  saveTopic(topic);
+  const [title, message] = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+  try {
+    const res = await fetch('https://ntfy.sh', {
+      method: 'POST',
+      body: JSON.stringify({ topic, title, message }),
+    });
+    show(res.ok ? '보냈어요' : '실패: ' + res.status);
+  } catch {
+    show('실패: 네트워크 확인');
+  }
+};
+</script>
+</body>
+</html>
